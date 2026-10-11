@@ -1,0 +1,411 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Weather Station Wiring Story</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=Lexend:wght@400;500;600&display=swap">
+<style>
+/* Layout: a lab-bench stage (the circuit) on the left, a story card on the right; stacks on narrow screens. */
+/* --w-sda / --w-scl are the I2C wire colours */
+:root{
+  --w-sda:#1e88e5; --w-scl:#27a35a;
+  --bg:#e9efe9; --stage:#f7faf6; --dot:#d3ddd3; --ink:#15211b; --muted:#56655c;
+  --card:#ffffff; --line:#cfd9d0; --accent:#b3121b; --accent-ink:#ffffff;
+  --ok:#1f7a3a; --ok-bg:#e3f4e8; --bad:#b3121b; --bad-bg:#fbe7e7; --chip:#eef3ee;
+  --w-power:#d62828; --w-gnd:#262626; --w-sig:#e0a100; --w-ctrl:#7b3fe4; --w-motor:#e8742a; --tube:#3a8ee6;
+  --case:#ffffff; --label:#15211b;
+  --f-display:"Chakra Petch", "Segoe UI", system-ui, sans-serif;
+  --f-body:"Lexend", "Segoe UI", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#0f1517; --stage:#151d20; --dot:#243035; --ink:#e5ece7; --muted:#9aa9a1;
+  --card:#1a2326; --line:#2c393d; --accent:#ff5a5f; --accent-ink:#1a0a0b;
+  --ok:#6fd38f; --ok-bg:#163223; --bad:#ff7b7f; --bad-bg:#3a1a1c; --chip:#212c2f;
+  --w-gnd:#2a2a2a; --case:#cfd8d3; --label:#e5ece7; color-scheme:dark; } }
+:root[data-theme="dark"]{
+  --bg:#0f1517; --stage:#151d20; --dot:#243035; --ink:#e5ece7; --muted:#9aa9a1;
+  --card:#1a2326; --line:#2c393d; --accent:#ff5a5f; --accent-ink:#1a0a0b;
+  --ok:#6fd38f; --ok-bg:#163223; --bad:#ff7b7f; --bad-bg:#3a1a1c; --chip:#212c2f;
+  --w-gnd:#2a2a2a; --case:#cfd8d3; --label:#e5ece7; color-scheme:dark; }
+*{box-sizing:border-box}
+html,body{height:100%}
+body{background:var(--bg); color:var(--ink); font-family:var(--f-body); font-size:16px; line-height:1.5; padding-inline:16px; padding-block:12px 20px}
+.top{display:flex; flex-wrap:wrap; align-items:center; gap:8px 16px; max-width:1400px; margin:0 auto 10px}
+.brand{font-family:var(--f-display); font-weight:700; font-size:1.25rem; letter-spacing:.02em}
+.brand small{display:block; font-size:.72rem; font-weight:600; color:var(--muted); letter-spacing:.14em; text-transform:uppercase}
+.steps{display:flex; flex-wrap:wrap; gap:6px; margin-left:auto}
+.steps button{font:600 .8rem/1 var(--f-display); border:1px solid var(--line); background:var(--card); color:var(--muted); border-radius:999px; padding:7px 11px; cursor:pointer}
+.steps button[aria-current="step"]{background:var(--accent); color:var(--accent-ink); border-color:var(--accent)}
+.steps button.done{color:var(--ink)}
+.wrap{display:grid; grid-template-columns:minmax(0,1.25fr) minmax(0,1fr); gap:16px; max-width:1400px; margin:0 auto; align-items:start}
+@media (max-width:900px){ .wrap{grid-template-columns:minmax(0,1fr)} }
+.stage{background:var(--stage); background-image:radial-gradient(var(--dot) 1.2px, transparent 1.3px); background-size:22px 22px; border:1px solid var(--line); border-radius:14px; padding:8px; position:sticky; top:env(safe-area-inset-top,0px)}
+@media (max-width:900px){ .stage{position:static} }
+svg{display:block; width:100%; height:auto; max-height:calc(100vh - 120px)}
+.panel{background:var(--card); border:1px solid var(--line); border-radius:14px; padding:22px 24px; min-width:0; display:flex; flex-direction:column; gap:14px}
+.kicker{font:600 .78rem/1 var(--f-display); letter-spacing:.14em; text-transform:uppercase; color:var(--accent)}
+h1{font-family:var(--f-display); font-size:clamp(1.5rem,2.4vw,2.1rem); line-height:1.15; margin:0; text-wrap:balance}
+.story p{margin:0 0 10px; max-width:62ch}
+.story p:last-child{margin-bottom:0}
+.story b{font-weight:600}
+.q{border:1px solid var(--line); border-radius:12px; padding:16px; background:var(--chip); display:flex; flex-direction:column; gap:10px}
+.q .qt{font-family:var(--f-display); font-weight:600; font-size:1.15rem; display:flex; gap:10px; align-items:baseline}
+.q .qt span{font-size:.75rem; letter-spacing:.12em; color:var(--accent); flex:none}
+.opts{display:grid; gap:8px}
+.opts button{font:500 1rem/1.35 var(--f-body); text-align:left; padding:11px 14px; border-radius:10px; border:1.5px solid var(--line); background:var(--card); color:var(--ink); cursor:pointer}
+.opts button:hover{border-color:var(--accent)}
+.opts button.right{border-color:var(--ok); background:var(--ok-bg)}
+.opts button.wrong{border-color:var(--bad); background:var(--bad-bg); animation:shake .3s}
+@keyframes shake{25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
+.fb{border-radius:10px; padding:10px 14px; font-size:.98rem}
+.fb.ok{background:var(--ok-bg); color:var(--ink); border-left:4px solid var(--ok)}
+.fb.no{background:var(--bad-bg); color:var(--ink); border-left:4px solid var(--bad)}
+.reveal{align-self:flex-start; font:500 .85rem var(--f-body); background:none; border:none; color:var(--muted); text-decoration:underline; cursor:pointer; padding:0}
+.nav{display:flex; gap:10px; margin-top:auto; padding-top:6px}
+.nav button{font:600 1rem/1 var(--f-display); padding:13px 20px; border-radius:10px; cursor:pointer; border:1.5px solid var(--line); background:var(--card); color:var(--ink)}
+.nav .next{background:var(--accent); color:var(--accent-ink); border-color:var(--accent); margin-left:auto}
+.nav button:disabled{opacity:.4; cursor:default}
+button:focus-visible, input:focus-visible{outline:3px solid var(--tube); outline-offset:2px}
+table{border-collapse:collapse; width:100%; font-size:.92rem}
+.tw{overflow-x:auto}
+th,td{padding:7px 9px; border-bottom:1px solid var(--line); text-align:left; vertical-align:top}
+th{font-family:var(--f-display); font-size:.78rem; letter-spacing:.08em; text-transform:uppercase; color:var(--muted)}
+.sw{display:inline-block; width:22px; height:6px; border-radius:3px; vertical-align:middle; margin-right:6px; outline:1px solid var(--line)}
+.bars{display:grid; gap:8px}
+.bar{display:grid; grid-template-columns:8.5em minmax(0,1fr) 4.5em; gap:10px; align-items:center; font-size:.92rem}
+.bar .track{height:16px; border-radius:8px; background:var(--chip); border:1px solid var(--line); overflow:hidden}
+.bar .fill{height:100%; border-radius:8px}
+.bar .v{font-variant-numeric:tabular-nums; font-weight:600}
+.truth{font-variant-numeric:tabular-nums}
+.sim{display:flex; flex-direction:column; gap:10px; border:1px solid var(--line); border-radius:12px; padding:14px; background:var(--chip)}
+.sim label{font-weight:600}
+.sim input[type=range]{width:100%; accent-color:var(--tube)}
+.chain{display:flex; flex-wrap:wrap; gap:6px; align-items:center; font-family:var(--f-display); font-weight:600}
+.chain .pill{padding:5px 10px; border-radius:999px; background:var(--card); border:1px solid var(--line)}
+.chain .pill.on{background:var(--ok-bg); border-color:var(--ok)}
+.chain .pill.off{background:var(--bad-bg); border-color:var(--bad)}
+.chain i{font-style:normal; color:var(--muted)}
+.tip{font-size:.9rem; color:var(--muted)}
+.legend{display:flex; flex-wrap:wrap; gap:6px 14px; font-size:.85rem; color:var(--muted); padding:4px 6px 2px}
+
+/* SVG */
+.comp{transition:opacity .35s}
+.dim .comp:not(.focus){opacity:.28}
+.focus .ring{display:block}
+.ring{display:none; fill:none; stroke:var(--accent); stroke-width:3; stroke-dasharray:8 6; animation:march 1s linear infinite}
+@keyframes march{to{stroke-dashoffset:-14}}
+.lbl{font-family:var(--f-display); font-weight:700; fill:var(--label); font-size:15px}
+.pin{font-family:var(--f-display); font-weight:700; font-size:10.5px; fill:#fff}
+.pinD{font-family:var(--f-display); font-weight:700; font-size:11px; fill:var(--label)}
+.wire{fill:none; stroke-width:5; stroke-linecap:round; stroke-linejoin:round}
+.case{fill:none; stroke:var(--case); stroke-width:8.5; stroke-linecap:round; stroke-linejoin:round}
+.wg path{transition:stroke-dashoffset 1.1s ease}
+.wg.hidden path{stroke-dashoffset:1}
+.wg:not(.hidden) path{stroke-dashoffset:0}
+.wg.new .wire{filter:drop-shadow(0 0 4px currentColor)}
+.flow{fill:none; stroke:#fff; stroke-width:2; stroke-dasharray:4 10; stroke-linecap:round; animation:flow .6s linear infinite; opacity:.95}
+@keyframes flow{to{stroke-dashoffset:-14}}
+.lcdtxt{font-family:"Courier New",monospace;font-weight:700;font-size:21px;fill:#0d1b4c}
+.waterflow{fill:none; stroke:#bfe0ff; stroke-width:3; stroke-dasharray:6 10; animation:flow .5s linear infinite}
+@media (prefers-reduced-motion: reduce){ .ring,.flow,.lcdtxt{font-family:"Courier New",monospace;font-weight:700;font-size:21px;fill:#0d1b4c}
+.waterflow{animation:none} .wg path{transition:none} }
+</style>
+
+<header class="top">
+  <div class="brand"><small>Grade 8 · ICT &amp; STEAM</small>Mini Weather System: wiring story</div>
+  <nav class="steps" id="steps" aria-label="Steps"></nav>
+</header>
+
+<main class="wrap">
+  <section class="stage" aria-label="Circuit">
+    <svg id="svg" viewBox="0 0 720 620" role="img" aria-label="Weather system circuit">
+      <!-- DHT11 -->
+      <g class="comp" id="c-dht">
+        <rect class="ring" x="44" y="30" width="152" height="186" rx="12"/>
+        <rect x="58" y="146" width="124" height="44" rx="5" fill="#1b5e9e" stroke="#222" stroke-width="1.5"/>
+        <rect x="74" y="42" width="92" height="112" rx="8" fill="#4aa3df" stroke="#222" stroke-width="1.5"/>
+        <g id="dhtGrid" fill="#2a6f9e"></g>
+        <text x="120" y="168" text-anchor="middle" font-family="Chakra Petch, sans-serif" font-weight="700" font-size="13" fill="#fff">DHT11</text>
+        <rect x="107" y="190" width="6" height="12" fill="#bbb"/><rect x="137" y="190" width="6" height="12" fill="#bbb"/><rect x="167" y="190" width="6" height="12" fill="#bbb"/>
+        <text x="110" y="184" text-anchor="middle" class="pin" style="font-size:9px">GND</text>
+        <text x="140" y="184" text-anchor="middle" class="pin" style="font-size:9px">VCC</text>
+        <text x="170" y="184" text-anchor="middle" class="pin" style="font-size:9px">DATA</text>
+      </g>
+
+      <!-- Arduino (top right) -->
+      <g class="comp" id="c-uno">
+        <rect class="ring" x="378" y="44" width="334" height="192" rx="12"/>
+        <path d="M384 96 H334" stroke="#666" stroke-width="7" stroke-linecap="round"/>
+        <text x="330" y="86" text-anchor="end" class="pinD" style="font-size:11px">USB</text>
+        <rect x="384" y="78" width="30" height="36" rx="3" fill="#c9c9c9" stroke="#444"/>
+        <rect x="388" y="172" width="26" height="30" rx="3" fill="#222"/>
+        <rect x="400" y="60" width="300" height="160" rx="10" fill="#00878f" stroke="#0b4f54" stroke-width="2"/>
+        <rect x="421" y="56" width="276" height="12" rx="2" fill="#111"/>
+        <rect x="440" y="212" width="108" height="12" rx="2" fill="#111"/>
+        <rect x="566" y="212" width="92" height="12" rx="2" fill="#111"/>
+        <g id="unoPins" fill="#777"></g>
+        <rect x="512" y="132" width="118" height="30" rx="3" fill="#1d1d1d"/>
+        <text x="571" y="152" text-anchor="middle" font-family="Chakra Petch, sans-serif" font-size="10" fill="#bbb">ATmega328P</text>
+        <text x="450" y="115" font-family="Chakra Petch, sans-serif" font-weight="700" font-size="22" fill="#fff">Arduino UNO</text>
+        <text x="659" y="85" class="pin" text-anchor="middle">D2</text>
+        <text x="493" y="203" class="pin" text-anchor="middle">5V</text>
+        <text x="514" y="191" class="pin" text-anchor="middle" style="font-size:9.5px">GND</text><line x1="512" y1="194" x2="512" y2="210" stroke="#e0f2f1" stroke-width="1"/>
+        <text x="633" y="203" class="pin" text-anchor="middle">A4</text>
+        <text x="653" y="191" class="pin" text-anchor="middle">A5</text><line x1="650" y1="194" x2="650" y2="210" stroke="#e0f2f1" stroke-width="1"/>
+      </g>
+
+      <!-- Breadboard -->
+      <g class="comp" id="c-bb">
+        <rect class="ring" x="220" y="246" width="104" height="300" rx="12"/>
+        <rect x="230" y="256" width="84" height="270" rx="5" fill="#f1f0ea" stroke="#b9b6a8" stroke-width="1.5"/>
+        <line x1="255" y1="260" x2="255" y2="522" stroke="#2f6fd6" stroke-width="2"/>
+        <line x1="290" y1="260" x2="290" y2="522" stroke="#d62828" stroke-width="2"/>
+        <g id="bbHoles" fill="#9c9888"></g>
+        <text x="255" y="542" text-anchor="middle" class="pinD" style="fill:#2f6fd6;font-size:12px">− rail</text>
+        <text x="290" y="542" text-anchor="middle" class="pinD" style="fill:#d62828;font-size:12px">+ rail</text>
+        <text x="218" y="400" text-anchor="middle" class="pinD" transform="rotate(-90 218 400)" style="font-size:11px">BREADBOARD</text>
+      </g>
+
+      <!-- LCD (bottom right) -->
+      <g class="comp" id="c-lcd">
+        <rect class="ring" x="364" y="396" width="348" height="216" rx="12"/>
+        <rect x="374" y="436" width="328" height="166" rx="8" fill="#2e7d32" stroke="#1b4d1e" stroke-width="2"/>
+        <circle cx="386" cy="590" r="0" fill="#fff" stroke="#333"/><circle cx="690" cy="448" r="5" fill="#fff" stroke="#333"/>
+        <circle cx="386" cy="590" r="5" fill="#fff" stroke="#333"/><circle cx="690" cy="590" r="5" fill="#fff" stroke="#333"/>
+        <rect id="lcdScreen" x="398" y="470" width="280" height="100" rx="4" fill="#24452a" stroke="#111" stroke-width="2"/>
+        <text id="lcd1" x="414" y="510" class="lcdtxt"></text>
+        <text id="lcd2" x="414" y="550" class="lcdtxt"></text>
+        <rect x="378" y="408" width="108" height="16" rx="2" fill="#111"/>
+        <g fill="#d4af37"><rect x="386" y="412" width="8" height="8"/><rect x="414" y="412" width="8" height="8"/><rect x="442" y="412" width="8" height="8"/><rect x="470" y="412" width="8" height="8"/></g>
+        <text x="390" y="452" class="pin" text-anchor="middle" style="font-size:10px">GND</text>
+        <text x="418" y="452" class="pin" text-anchor="middle" style="font-size:10px">VCC</text>
+        <text x="446" y="452" class="pin" text-anchor="middle" style="font-size:10px">SDA</text>
+        <text x="474" y="452" class="pin" text-anchor="middle" style="font-size:10px">SCL</text>
+        <text x="690" y="462" class="pin" text-anchor="end">16×2 I2C LCD</text>
+      </g>
+
+      <g id="wires"></g>
+      <g id="flows"></g>
+    </svg>
+    <div class="legend">
+      <span><i class="sw" style="background:var(--w-power)"></i>Power (+5V)</span>
+      <span><i class="sw" style="background:var(--w-gnd)"></i>Ground (−)</span>
+      <span><i class="sw" style="background:var(--w-sig)"></i>DHT11 data</span>
+      <span><i class="sw" style="background:var(--w-sda)"></i>SDA (data to LCD)</span>
+      <span><i class="sw" style="background:var(--w-scl)"></i>SCL (clock)</span>
+    </div>
+  </section>
+
+  <section class="panel" aria-live="polite">
+    <div class="kicker" id="kicker"></div>
+    <h1 id="title"></h1>
+    <div class="story" id="story"></div>
+    <div id="extra"></div>
+    <div id="qbox"></div>
+    <div class="nav">
+      <button id="back" type="button">← Back</button>
+      <button id="next" class="next" type="button">Next →</button>
+    </div>
+  </section>
+</main>
+
+<script>
+(function(){
+const NS = "http://www.w3.org/2000/svg";
+const $ = id => document.getElementById(id);
+const mk = (tag, attrs, parent) => { const e=document.createElementNS(NS,tag); for(const k in attrs) e.setAttribute(k,attrs[k]); parent.appendChild(e); return e; };
+
+// Arduino header pins
+const top = [429,444,459,474,489,504,519,534,549,564,584,599,614,629,644,659,674,689];
+const bot = [448,463,478,495,512,527,542,575,590,605,620,635,650];
+top.forEach(x=>mk("rect",{x:x-3.5,y:58.5,width:7,height:7},$("unoPins")));
+bot.forEach(x=>mk("rect",{x:x-3.5,y:214.5,width:7,height:7},$("unoPins")));
+// DHT11 grille
+for(let r=0;r<5;r++) for(let c=0;c<4;c++) mk("rect",{x:82+c*20,y:52+r*19,width:14,height:11,rx:1.5},$("dhtGrid"));
+// breadboard holes
+for(let y=270;y<=516;y+=12) for(const x of [244,266,279,301]) mk("rect",{x:x-2,y:y-2,width:4,height:4},$("bbHoles"));
+
+const W = {
+  u_5v:   {c:"--w-power", p:"495,222 495,250 290,250 290,264", from:"Arduino 5V", to:"Breadboard + rail"},
+  u_gnd:  {c:"--w-gnd",   p:"512,222 512,276 255,276", from:"Arduino GND", to:"Breadboard − rail"},
+  d_vcc:  {c:"--w-power", p:"140,202 140,290 290,290", from:"DHT11 VCC", to:"Breadboard + rail"},
+  d_gnd:  {c:"--w-gnd",   p:"110,202 110,306 255,306", from:"DHT11 GND", to:"Breadboard − rail"},
+  d_data: {c:"--w-sig",   p:"170,202 170,216 206,216 206,22 659,22 659,62", from:"DHT11 DATA", to:"Arduino D2"},
+  l_vcc:  {c:"--w-power", p:"418,410 418,385 290,385", from:"LCD VCC", to:"Breadboard + rail"},
+  l_gnd:  {c:"--w-gnd",   p:"390,410 390,400 255,400", from:"LCD GND", to:"Breadboard − rail"},
+  l_sda:  {c:"--w-sda",   p:"446,410 446,330 635,330 635,220", from:"LCD SDA", to:"Arduino A4"},
+  l_scl:  {c:"--w-scl",   p:"474,410 474,345 650,345 650,220", from:"LCD SCL", to:"Arduino A5"},
+};
+const wg = $("wires");
+for (const [id,w] of Object.entries(W)){
+  const g = mk("g",{class:"wg hidden",id:"w-"+id},wg); g.style.color=`var(${w.c})`;
+  const cs = mk("polyline",{points:w.p,class:"case",pathLength:"1"},g);
+  const wl = mk("polyline",{points:w.p,class:"wire",stroke:`var(${w.c})`,pathLength:"1"},g);
+  [cs,wl].forEach(el=>el.style.strokeDasharray="1");
+}
+const st=document.createElement("style"); st.textContent=".wg polyline{transition:stroke-dashoffset 1.1s ease}.wg.hidden polyline{stroke-dashoffset:1}.wg:not(.hidden) polyline{stroke-dashoffset:0}@media (prefers-reduced-motion: reduce){.wg polyline{transition:none}}"; document.head.appendChild(st);
+
+const ALL = ["c-dht","c-uno","c-bb","c-lcd"];
+
+const STEPS = [
+ { k:"The project", t:"What is a weather system?", focus:[],
+   s:`<p>A weather system uses <b>sensors</b> to collect information about the environment. Ours will measure the <b>temperature</b> and <b>humidity</b> of the air and show them on a screen.</p>
+      <p>The information travels like this: <b>DHT11 → Arduino → LCD</b>. Nothing is connected yet. Step by step, we will work out <b>which wire goes where, and why</b>.</p>`,
+   extra:`<div class="tw"><table><tr><th>Component</th><th>Its job in the story</th></tr>
+     <tr><td><b>DHT11 sensor</b></td><td>Measures temperature &amp; humidity (input)</td></tr>
+     <tr><td><b>Arduino UNO</b></td><td>The brain – receives and processes the data</td></tr>
+     <tr><td><b>16×2 I2C LCD</b></td><td>The screen that shows the readings (output)</td></tr>
+     <tr><td><b>Breadboard</b></td><td>Shares 5V and GND with many parts</td></tr>
+     <tr><td><b>USB cable</b></td><td>Powers the Arduino and uploads the code</td></tr></table></div>` },
+
+ { k:"Step 1 · Power", t:"One 5V pin, two parts", focus:["c-uno","c-bb"], wires:["u_5v","u_gnd"],
+   s:`<p>The DHT11 and the LCD both need <b>5V</b> and <b>GND</b>. But the Arduino has only <b>one 5V pin</b> on its power header.</p>`,
+   q:{ q:"How can both parts get 5V from the Arduino?",
+       o:[["Push both wires into the same 5V hole",false,"The hole only fits one wire, and loose wires cause bad connections."],
+          ["Use the breadboard’s power rails",true,"Yes! <b>Arduino 5V → + rail</b> and <b>Arduino GND → − rail</b>. Every hole along a rail is connected, so many parts can share the power."],
+          ["Take power from pin A0",false,"A0 is an input pin for reading values. It is not a power supply."]] } },
+
+ { k:"Step 2 · The sensor", t:"Give the DHT11 power", focus:["c-dht","c-bb"], wires:["d_vcc","d_gnd"],
+   s:`<p>The <b>DHT11</b> measures the temperature (0–50 °C) and the humidity (20–90 %) of the air. Before it can measure anything, it needs <b>power</b>.</p>
+      <p>The breadboard rails now carry power from the Arduino: the <b style="color:var(--w-power)">+ rail</b> has 5V and the <b>− rail</b> is GND.</p>
+      <p class="tip">The pin order is different on some DHT11 modules – always read the labels on yours.</p>`,
+   q:{ q:"How should we connect the DHT11’s power pins?",
+       o:[["VCC → − rail and GND → + rail",false,"That is the wrong way round! Reversing power can damage the sensor."],
+          ["VCC → + rail and GND → − rail",true,"Correct! <b>VCC → + rail</b> (5V) and <b>GND → − rail</b>. Now the DHT11 has power."],
+          ["VCC and GND both → + rail",false,"Then there is no path back to ground, so no current can flow and the sensor stays off."]] } },
+
+ { k:"Step 3 · Sending the readings", t:"Where does the DHT11 send its data?", focus:["c-dht","c-uno"], wires:["d_data"],
+   s:`<p>The DHT11 sends the temperature and humidity as <b>digital data</b> on one wire: its <b>DATA</b> pin.</p>`,
+   q:{ q:"Which Arduino pin should the DATA wire go to?",
+       o:[["D2 – a digital pin",true,"Yes! <b>DHT11 DATA → D2</b>. In the code we tell the Arduino: the DHT11 is on pin 2."],
+          ["A4 – an analog pin",false,"A4 is busy: we will need it for the LCD (SDA). The DHT11 talks digitally, so we use a digital pin."],
+          ["GND",false,"GND is ground. A signal connected there would be lost."]] } },
+
+ { k:"Step 4 · The screen", t:"Give the LCD power", focus:["c-lcd","c-bb"], wires:["l_vcc","l_gnd"], lcdOn:true,
+   s:`<p>The <b>16×2 LCD</b> can show 16 characters on each of its 2 rows. The small black board on its back (the <b>I2C backpack</b>) lets us use only <b>4 pins</b>: GND, VCC, SDA and SCL.</p>
+      <p>Like the DHT11, the LCD takes its power from the breadboard rails.</p>`,
+   q:{ q:"Which LCD pins should go to the breadboard rails?",
+       o:[["SDA and SCL",false,"SDA and SCL carry data, not power. They will go to the Arduino in the next step."],
+          ["VCC → + rail and GND → − rail",true,"Correct! <b>VCC → + rail</b> and <b>GND → − rail</b>. Look – with power, the backlight turns on."],
+          ["All four pins",false,"Only the power pins go to the rails. SDA and SCL carry data to the Arduino."]] } },
+
+ { k:"Step 5 · Talking to the LCD", t:"SDA and SCL: the I2C wires", focus:["c-lcd","c-uno"], wires:["l_sda","l_scl"], lcdOn:true,
+   s:`<p>The Arduino talks to the LCD with <b>I2C</b>, which needs only 2 wires:</p>
+      <p><b style="color:var(--w-sda)">SDA</b> (Serial Data) carries the text.<br><b style="color:var(--w-scl)">SCL</b> (Serial Clock) keeps the timing.</p>`,
+   q:{ q:"On the Arduino UNO, which pins are the I2C pins?",
+       o:[["D2 and D3",false,"D2 is already used by the DHT11, and these are not the I2C pins."],
+          ["A4 (SDA) and A5 (SCL)",true,"Right! <b>LCD SDA → A4</b> and <b>LCD SCL → A5</b>. These pins have I2C built in."],
+          ["5V and GND",false,"Those are power pins. They don’t carry data."]] } },
+
+ { k:"Step 6 · Try it", t:"Measure → Process → Display", focus:[], sim:true, lcdOn:true,
+   s:`<p>Every wire is in place. Change the weather and watch the readings travel: the <b>DHT11 measures</b>, the <b>Arduino processes</b>, and the <b>LCD displays</b>.</p>` },
+
+ { k:"Summary", t:"All the connections", focus:[], table:true, lcdOn:true,
+   s:`<p>Use this checklist when you build the real circuit. Check each wire off with your partner.</p>` },
+];
+
+let cur = 0;
+const answered = new Set();
+const stepsNav = $("steps");
+STEPS.forEach((s,i)=>{ const b=document.createElement("button"); b.type="button"; b.textContent = i===0?"Start":(i===STEPS.length-1?"Summary":i); b.title=s.t; b.onclick=()=>go(i); stepsNav.appendChild(b); });
+
+function wiresShown(){
+  const on = new Set();
+  STEPS.forEach((s,i)=>{ if(!s.wires) return; if(i<cur || (i===cur && (!s.q || answered.has(i)))) s.wires.forEach(w=>on.add(w)); });
+  return on;
+}
+function setLCD(a,b){ $("lcd1").textContent=a; $("lcd2").textContent=b; }
+function lcdState(){
+  const on = wiresShown();
+  const powered = on.has("l_vcc") && on.has("l_gnd");
+  const linked = on.has("l_sda") && on.has("l_scl");
+  $("lcdScreen").setAttribute("fill", powered ? "#7fb3ff" : "#24452a");
+  if (STEPS[cur].sim) return;
+  if (!powered) setLCD("","");
+  else if (!linked) setLCD("","");
+  else if (STEPS[cur].table) setLCD("Temp: 25°C","Humidity: 60%");
+  else setLCD("Weather System","Ready!");
+}
+function render(){
+  const s = STEPS[cur];
+  $("kicker").textContent = s.k; $("title").textContent = s.t;
+  $("story").innerHTML = s.s; $("extra").innerHTML = s.extra || "";
+  [...stepsNav.children].forEach((b,i)=>{ b.removeAttribute("aria-current"); if(i===cur) b.setAttribute("aria-current","step"); b.classList.toggle("done", i<cur); });
+  $("svg").classList.toggle("dim", s.focus.length>0);
+  ALL.forEach(id=>$(id).classList.toggle("focus", s.focus.includes(id)));
+  updateWires();
+  const qb = $("qbox"); qb.innerHTML="";
+  if (s.q){
+    const box = document.createElement("div"); box.className="q";
+    box.innerHTML = `<div class="qt"><span>QUESTION</span>${s.q.q}</div>`;
+    const opts = document.createElement("div"); opts.className="opts";
+    const fb = document.createElement("div");
+    s.q.o.forEach(([txt,ok,why],j)=>{
+      const b=document.createElement("button"); b.type="button"; b.id=`opt-${cur}-${j}`; b.innerHTML=txt;
+      b.onclick=()=>{ b.classList.remove("wrong"); void b.offsetWidth; b.classList.add(ok?"right":"wrong");
+        fb.className="fb "+(ok?"ok":"no"); fb.innerHTML=why;
+        if(ok){ answered.add(cur); updateWires(); const rv=box.querySelector(".reveal"); if(rv) rv.remove(); } };
+      opts.appendChild(b);
+    });
+    box.appendChild(opts); box.appendChild(fb);
+    if (answered.has(cur)){ const j=s.q.o.findIndex(o=>o[1]); opts.children[j].classList.add("right"); fb.className="fb ok"; fb.innerHTML=s.q.o[j][2]; }
+    else { const r=document.createElement("button"); r.type="button"; r.className="reveal"; r.textContent="Show the answer"; r.onclick=()=>opts.children[s.q.o.findIndex(o=>o[1])].click(); box.appendChild(r); }
+    qb.appendChild(box);
+  }
+  if (s.sim) buildSim(); else drawFlows(false);
+  if (s.table) buildTable();
+  lcdState();
+  $("back").disabled = cur===0;
+  $("next").textContent = cur===STEPS.length-1 ? "Start again ↺" : "Next →";
+}
+function updateWires(){
+  const on = wiresShown(); const s = STEPS[cur];
+  for (const id of Object.keys(W)){
+    const g=$("w-"+id); g.classList.toggle("hidden", !on.has(id));
+    g.classList.toggle("new", !!(s.wires && s.wires.includes(id) && on.has(id)));
+  }
+  lcdState();
+}
+function go(i){ cur=Math.max(0,Math.min(STEPS.length-1,i)); render(); }
+$("back").onclick=()=>go(cur-1);
+$("next").onclick=()=>go(cur===STEPS.length-1?0:cur+1);
+document.addEventListener("keydown",e=>{ if(e.target.tagName==="INPUT") return; if(e.key==="ArrowRight") $("next").click(); if(e.key==="ArrowLeft"&&cur>0) go(cur-1); });
+
+// ---- simulation ----
+const PRESETS = [["Summer afternoon",38,30],["Classroom with AC",22,45],["Rainy winter day",14,85]];
+function buildSim(){
+  $("extra").innerHTML = `<div class="sim">
+    <div class="chain" id="presets"></div>
+    <label for="temp">Temperature: <span id="tl"></span></label>
+    <input id="temp" type="range" min="0" max="50" value="25">
+    <label for="hum">Humidity: <span id="hl"></span></label>
+    <input id="hum" type="range" min="20" max="90" value="60">
+    <div class="chain" id="chain"></div>
+    <div class="tip">The DHT11 measures 0–50 °C and 20–90 % humidity. It gives about one new reading per second.</div>
+  </div>`;
+  const pr=$("presets");
+  PRESETS.forEach(([n,t,h],i)=>{ const b=document.createElement("button"); b.type="button"; b.id="preset-"+i; b.className="pill"; b.style.cursor="pointer"; b.style.font="inherit"; b.style.color="var(--ink)"; b.textContent=n; b.onclick=()=>{ $("temp").value=t; $("hum").value=h; simUpdate(); }; pr.appendChild(b); });
+  $("temp").oninput=simUpdate; $("hum").oninput=simUpdate; simUpdate();
+}
+function simUpdate(){
+  const t=+$("temp").value, h=+$("hum").value;
+  $("tl").textContent=t+" °C"; $("hl").textContent=h+" %";
+  $("chain").innerHTML=`<span class="pill">1 · DHT11 measures</span><i>→</i><span class="pill">2 · Arduino processes (D2)</span><i>→</i><span class="pill on">3 · LCD displays (A4/A5)</span>`;
+  setLCD(`Temp: ${t}°C`, `Humidity: ${h}%`);
+  drawFlows(true);
+}
+function drawFlows(sim){
+  const f=$("flows"); f.innerHTML="";
+  if (!sim) return;
+  ["u_5v","u_gnd","d_vcc","d_gnd","l_vcc","l_gnd","d_data","l_sda","l_scl"].forEach(id=>mk("polyline",{points:W[id].p,class:"flow"},f));
+}
+function buildTable(){
+  const rows = Object.values(W).map(w=>`<tr><td><i class="sw" style="background:var(${w.c})"></i></td><td>${w.from}</td><td>→ ${w.to}</td><td><input type="checkbox" aria-label="done"></td></tr>`).join("");
+  $("extra").innerHTML = `<div class="tw"><table><tr><th></th><th>From</th><th>To</th><th>✓</th></tr>${rows}</table></div>
+   <p class="tip" style="margin-top:10px">Arduino power: USB cable. LCD blank? Turn the contrast screw on its back, or try I2C address 0x3F instead of 0x27.</p>`;
+}
+
+render();
+})();
+</script>
+
+</body></html>
